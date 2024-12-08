@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de los Backrooms - Móvil</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #d1c48e;
+        }
+        canvas {
+            display: block;
+        }
+        #controls {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #444;
+            color: white;
+            font-size: 20px;
+            border: none;
+            outline: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+        button:active {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="controls">
+        <button id="left">◀️</button>
+        <button id="up">▲</button>
+        <button id="down">▼</button>
+        <button id="right">▶️</button>
+        <button id="run">🏃</button>
+        <button id="camera">📷</button>
+    </div>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        // Player settings
+        const player = {
+            x: 100,
+            y: 100,
+            width: 20,
+            height: 20,
+            color: "yellow",
+            speed: 3,
+            runSpeed: 6,
+            isRunning: false,
+        };
+
+        // Enemy settings
+        const enemy = {
+            x: 300,
+            y: 300,
+            width: 20,
+            height: 20,
+            color: "red",
+            speed: 2
+        };
+
+        // Cameras
+        const cameras = [];
+        const maxCameras = 3;
+
+        // Walls (Backrooms layout)
+        const walls = [
+            {x: 50, y: 50, width: 200, height: 20},
+            {x: 200, y: 100, width: 20, height: 200},
+            {x: 100, y: 300, width: 300, height: 20},
+            {x: 400, y: 200, width: 20, height: 150},
+        ];
+
+        // Movement states
+        const movement = {
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+        };
+
+        // Controls for mobile
+        document.getElementById("left").addEventListener("touchstart", () => movement.left = true);
+        document.getElementById("left").addEventListener("touchend", () => movement.left = false);
+        document.getElementById("right").addEventListener("touchstart", () => movement.right = true);
+        document.getElementById("right").addEventListener("touchend", () => movement.right = false);
+        document.getElementById("up").addEventListener("touchstart", () => movement.up = true);
+        document.getElementById("up").addEventListener("touchend", () => movement.up = false);
+        document.getElementById("down").addEventListener("touchstart", () => movement.down = true);
+        document.getElementById("down").addEventListener("touchend", () => movement.down = false);
+        document.getElementById("run").addEventListener("touchstart", () => player.isRunning = true);
+        document.getElementById("run").addEventListener("touchend", () => player.isRunning = false);
+        document.getElementById("camera").addEventListener("touchstart", placeCamera);
+
+        function drawWalls() {
+            ctx.fillStyle = "gray";
+            walls.forEach(wall => {
+                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+            });
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+
+        function drawEnemy() {
+            ctx.fillStyle = enemy.color;
+            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        }
+
+        function drawCameras() {
+            ctx.fillStyle = "blue";
+            cameras.forEach(camera => {
+                ctx.fillRect(camera.x, camera.y, camera.width, camera.height);
+            });
+        }
+
+        function movePlayer() {
+            const speed = player.isRunning ? player.runSpeed : player.speed;
+            if (movement.up) player.y -= speed;
+            if (movement.down) player.y += speed;
+            if (movement.left) player.x -= speed;
+            if (movement.right) player.x += speed;
+
+            // Wall collision
+            walls.forEach(wall => {
+                if (isColliding(player, wall)) {
+                    if (movement.up) player.y += speed;
+                    if (movement.down) player.y -= speed;
+                    if (movement.left) player.x += speed;
+                    if (movement.right) player.x -= speed;
+                }
+            });
+        }
+
+        function moveEnemy() {
+            const dx = player.x - enemy.x;
+            const dy = player.y - enemy.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 0) {
+                enemy.x += (dx / distance) * enemy.speed;
+                enemy.y += (dy / distance) * enemy.speed;
+            }
+        }
+
+        function placeCamera() {
+            if (cameras.length < maxCameras) {
+                cameras.push({
+                    x: player.x + player.width / 2 - 5,
+                    y: player.y + player.height / 2 - 5,
+                    width: 10,
+                    height: 10
+                });
+            }
+        }
+
+        function isColliding(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        function checkGameOver() {
+            if (isColliding(player, enemy)) {
+                alert("¡El enemigo te atrapó! Juego terminado.");
+                window.location.reload(); // Reiniciar el juego
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawWalls();
+            drawPlayer();
+            drawEnemy();
+            drawCameras();
+            movePlayer();
+            moveEnemy();
+            checkGameOver();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
